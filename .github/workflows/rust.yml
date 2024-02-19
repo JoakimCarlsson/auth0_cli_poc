@@ -30,12 +30,6 @@ jobs:
           command: build
           args: --release --target ${{ matrix.target }}
 
-      - name: Create Release Directory
-        run: mkdir -p release
-
-      - name: Create Release Directory
-        run: mkdir -p release
-
       - name: Compress for Windows
         if: runner.os == 'Windows'
         run: Compress-Archive -Path target/${{ matrix.target }}/release/* -DestinationPath release/${{ github.repository }}-${{ github.sha }}-${{ matrix.target }}.zip
