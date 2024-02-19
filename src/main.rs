@@ -1,62 +1,23 @@
-use reqwest::header::{CONTENT_TYPE};
-use serde::Deserialize;
+mod cli;
+mod server;
+mod auth;
+
+use cli::Cli;
 use std::sync::{Arc, Mutex};
-use warp::Filter;
-use tokio;
-use webbrowser;
-use reqwest::StatusCode;
-use std::error::Error;
 use clap::Parser;
 use std::io::{self, Write};
-
-#[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
-struct Cli {
-    #[clap(long)]
-    auth0_domain: String,
-
-    #[clap(long)]
-    auth0_client_id: String,
-
-    #[clap(long)]
-    audience: String,
-
-    #[clap(long)]
-    auth0_client_secret: String,
-}
+use tokio;
+use webbrowser;
 
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-
     let code_received = Arc::new(Mutex::new(None::<String>));
+    let redirect_uri = server::start_server(code_received.clone()).await;
 
-    let code_received_filter = {
-        let code_received = code_received.clone();
-        warp::any().map(move || code_received.clone())
-    };
-
-    let server = warp::path("callback")
-        .and(warp::query::<CallbackQuery>())
-        .and(code_received_filter)
-        .map(|query: CallbackQuery, code_received: Arc<Mutex<Option<String>>>| {
-            let mut code_lock = code_received.lock().unwrap();
-            *code_lock = Some(query.code.clone());
-            warp::reply::html("Authentication successful! You can close this window.")
-        });
-
-    let (addr, server) = warp::serve(server)
-        .bind_ephemeral(([127, 0, 0, 1], 3000));
-
-    tokio::spawn(server);
-
-    let auth0_domain = cli.auth0_domain;
-    let auth0_client_id = cli.auth0_client_id;
-    let redirect_uri = format!("http://{}:{}/callback", addr.ip(), addr.port());
-    let audience = cli.audience;
     let auth_url = format!(
         "https://{}/authorize?client_id={}&response_type=code&redirect_uri={}&audience={}&scope=openid profile email&prompt=login",
-        auth0_domain, auth0_client_id, redirect_uri, audience
+        cli.auth0_domain, cli.auth0_client_id, redirect_uri, cli.audience
     );
 
     if webbrowser::open(&auth_url).is_ok() {
@@ -65,18 +26,16 @@ async fn main() {
         println!("Please navigate to the following URL to log in: {}", auth_url);
     }
 
-    let mut auth_code: Option<String> = None;
-    while auth_code.is_none() {
-        let code_lock = code_received.lock().unwrap();
-        if code_lock.is_some() {
-            auth_code = code_lock.clone();
-        }
-        drop(code_lock);
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    }
+    let auth_code = wait_for_auth_code(code_received).await;
 
-    let auth0_client_secret = cli.auth0_client_secret;
-    let result = exchange_code_for_token(&auth0_domain, &auth0_client_id, &auth0_client_secret, &redirect_uri, &auth_code.unwrap()).await;
+    let result = auth::exchange_code_for_token(
+        &cli.auth0_domain,
+        &cli.auth0_client_id,
+        &cli.auth0_client_secret,
+        &redirect_uri,
+        &auth_code,
+    )
+        .await;
 
     match result {
         Ok((status, auth_response)) => {
@@ -88,42 +47,20 @@ async fn main() {
         }
     }
 
+    // Cleanup and exit
     println!("Press Enter to exit...");
     io::stdout().flush().unwrap();
     let _ = io::stdin().read_line(&mut String::new());
 }
 
-async fn exchange_code_for_token(domain: &str, client_id: &str, client_secret: &str, redirect_uri: &str, code: &str) -> Result<(StatusCode, AuthResponse), Box<dyn Error>> {
-    let client = reqwest::Client::new();
-    let res = client.post(format!("https://{}/oauth/token", domain))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .form(&[
-            ("client_id", client_id),
-            ("client_secret", client_secret),
-            ("grant_type", "authorization_code"),
-            ("code", code),
-            ("redirect_uri", redirect_uri)
-        ])
-        .send()
-        .await?;
-
-    let status = res.status();
-    let body = res.text().await?;
-    let auth_response: AuthResponse = serde_json::from_str(&body)?;
-
-    Ok((status, auth_response))
-}
-
-#[derive(Deserialize)]
-struct CallbackQuery {
-    code: String,
-}
-
-#[derive(Deserialize)]
-struct AuthResponse {
-    access_token: String,
-    id_token: String,
-    expires_in: u64,
-    token_type: String,
-    scope: String,
+async fn wait_for_auth_code(code_received: Arc<Mutex<Option<String>>>) -> String {
+    loop {
+        {
+            let code_lock = code_received.lock().unwrap();
+            if let Some(ref code) = *code_lock {
+                return code.clone();
+            }
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
 }
