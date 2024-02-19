@@ -12,49 +12,26 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            extension: exe
-            binary_path: target\x86_64-pc-windows-msvc\release
+            artifact_name: windows-executable-${{ env.PROJECT_NAME }}
+            binary_path: target\x86_64-pc-windows-msvc\release\${{ env.PROJECT_NAME }}.exe
           - os: macos-latest
             target: x86_64-apple-darwin
-            extension: ''
-            binary_path: target/x86_64-apple-darwin/release
+            artifact_name: mac-executable-${{ env.PROJECT_NAME }}
+            binary_path: target/x86_64-apple-darwin/release/${{ env.PROJECT_NAME }}
 
     steps:
       - uses: actions/checkout@v2
-
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
-          target: ${{ matrix.target }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
-
+          target: ${{ matrix.target }}
       - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target ${{ matrix.target }}
-
-      - name: Strip Executable (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          strip ${{ matrix.binary_path }}/your_executable_name
-
-      - name: Package Executable for Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          Compress-Archive -Path ${{ matrix.binary_path }}/auth0-poc.${{ matrix.extension }} -DestinationPath ${{ github.workspace }}/your_executable_name.zip
-        shell: powershell
-
-      - name: Package Executable for macOS/Linux
-        if: matrix.os != 'windows-latest'
-        run: |
-          tar -czvf ${{ github.workspace }}/auth0-poc.tar.gz -C ${{ matrix.binary_path }} your_executable_name
-        shell: bash
-
+        run: cargo build --release --target ${{ matrix.target }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.os }}-binary
-          path: ${{ github.workspace }}/auth0-poc.${{ matrix.os == 'windows-latest' && 'zip' || 'tar.gz' }}
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.binary_path }}
