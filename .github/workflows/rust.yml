@@ -12,26 +12,28 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: auth0_cli-windows
-            binary_path: target\x86_64-pc-windows-msvc\release\auth0_cli.exe
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact_name: auth0_cli-mac
-            binary_path: target/x86_64-apple-darwin/release/auth0_cli
 
     steps:
       - uses: actions/checkout@v2
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
-          override: true
           target: ${{ matrix.target }}
+          override: true
+
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target ${{ matrix.target }}
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.binary_path }}
+          name: ${{ matrix.os }}-binary
+          path: target/${{ matrix.target }}/release/
