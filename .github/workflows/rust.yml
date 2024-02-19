@@ -1,39 +1,57 @@
 name: Rust Build
 
-on: [push]
+on: push
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
         include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
           - os: macos-latest
             target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: ${{ matrix.target }}
-        override: true
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+          override: true
 
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release --target ${{ matrix.target }}
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target ${{ matrix.target }}
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: ${{ matrix.os }}-binary
-        path: target/${{ matrix.target }}/release/
+      - name: Strip binary (macOS and Linux)
+        if: runner.os != 'Windows'
+        run: |
+          strip target/${{ matrix.target }}/release/auth0_cli_poc
+
+      - name: Create release directory
+        run: mkdir -p release/${{ github.repository }}
+
+      - name: Compress for Windows
+        if: runner.os == 'Windows'
+        run: Compress-Archive -Path target/${{ matrix.target }}/release/* -DestinationPath release/${{ github.repository }}/${{ github.sha }}-${{ matrix.target }}.zip
+        shell: pwsh
+
+      - name: Compress for macOS and Linux
+        if: runner.os != 'Windows'
+        run: |
+          tar czvf release/${{ github.repository }}/${{ github.sha }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release .
+        shell: bash
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.target }}
+          path: release/${{ github.repository }}/*

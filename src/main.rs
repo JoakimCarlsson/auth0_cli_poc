@@ -16,8 +16,8 @@ async fn main() {
     let redirect_uri = server::start_server(code_received.clone()).await;
 
     let auth_url = format!(
-        "https://{}/authorize?client_id={}&response_type=code&redirect_uri={}&audience={}&scope=openid profile email&prompt=login",
-        cli.auth0_domain, cli.auth0_client_id, redirect_uri, cli.audience
+        "https://{}/authorize?client_id={}&response_type=code&redirect_uri={}&audience={}&scope={}&prompt=login",
+        cli.auth0_domain, cli.auth0_client_id, redirect_uri, cli.audience, cli.auth0_scopes
     );
 
     if webbrowser::open(&auth_url).is_ok() {

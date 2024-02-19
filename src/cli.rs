@@ -14,4 +14,7 @@ pub struct Cli {
 
     #[clap(long)]
     pub auth0_client_secret: String,
+
+    #[clap(long)]
+    pub auth0_scopes: String,
 }
