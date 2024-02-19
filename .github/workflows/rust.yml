@@ -14,6 +14,7 @@ jobs:
             target: x86_64-apple-darwin
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+
     steps:
       - uses: actions/checkout@v2
 
@@ -30,18 +31,23 @@ jobs:
           command: build
           args: --release --target ${{ matrix.target }}
 
+      - name: Create release directory
+        run: mkdir -p release/${{ github.repository }}
+
       - name: Compress for Windows
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path target/${{ matrix.target }}/release/* -DestinationPath release/${{ github.repository }}-${{ github.sha }}-${{ matrix.target }}.zip
+        run: Compress-Archive -Path target/${{ matrix.target }}/release/* -DestinationPath release/${{ github.repository }}/${{ github.sha }}-${{ matrix.target }}.zip
         shell: pwsh
 
       - name: Compress for macOS and Linux
         if: runner.os != 'Windows'
-        run: tar czvf release/${{ github.repository }}-${{ github.sha }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release .
+        run: |
+          mkdir -p release/${{ github.repository }}
+          tar czvf release/${{ github.repository }}/${{ github.sha }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release .
         shell: bash
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.target }}
-          path: release/*
+          path: release/${{ github.repository }}/*
