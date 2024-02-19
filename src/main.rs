@@ -6,9 +6,29 @@ use tokio;
 use webbrowser;
 use reqwest::StatusCode;
 use std::error::Error;
+use clap::Parser;
+use std::io::{self, Write};
+
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
+struct Cli {
+    #[clap(long)]
+    auth0_domain: String,
+
+    #[clap(long)]
+    auth0_client_id: String,
+
+    #[clap(long)]
+    audience: String,
+
+    #[clap(long)]
+    auth0_client_secret: String,
+}
 
 #[tokio::main]
 async fn main() {
+    let cli = Cli::parse();
+
     let code_received = Arc::new(Mutex::new(None::<String>));
 
     let code_received_filter = {
@@ -30,10 +50,10 @@ async fn main() {
 
     tokio::spawn(server);
 
-    let auth0_domain = "";
-    let auth0_client_id = "";
+    let auth0_domain = cli.auth0_domain;
+    let auth0_client_id = cli.auth0_client_id;
     let redirect_uri = format!("http://{}:{}/callback", addr.ip(), addr.port());
-    let audience = "";
+    let audience = cli.audience;
     let auth_url = format!(
         "https://{}/authorize?client_id={}&response_type=code&redirect_uri={}&audience={}&scope=openid profile email&prompt=login",
         auth0_domain, auth0_client_id, redirect_uri, audience
@@ -55,7 +75,7 @@ async fn main() {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     }
 
-    let auth0_client_secret = "";
+    let auth0_client_secret = cli.auth0_client_secret;
     let result = exchange_code_for_token(&auth0_domain, &auth0_client_id, &auth0_client_secret, &redirect_uri, &auth_code.unwrap()).await;
 
     match result {
@@ -67,6 +87,10 @@ async fn main() {
             println!("Failed to exchange code for token: {}", e);
         }
     }
+
+    println!("Press Enter to exit...");
+    io::stdout().flush().unwrap();
+    let _ = io::stdin().read_line(&mut String::new());
 }
 
 async fn exchange_code_for_token(domain: &str, client_id: &str, client_secret: &str, redirect_uri: &str, code: &str) -> Result<(StatusCode, AuthResponse), Box<dyn Error>> {
