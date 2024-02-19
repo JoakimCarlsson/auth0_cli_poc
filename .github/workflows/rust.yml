@@ -1,26 +1,26 @@
 name: Rust Build
 
-on: [push]
+on: push
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
+  build-and-upload:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
         include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact_name: auth0_cli-windows
-            binary_path: target/x86_64-pc-windows-msvc/release/auth0_cli.exe
-          - os: macos-latest
+          - build: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            binary_name: your_binary_name
+
+          - build: macos
+            os: macos-latest
             target: x86_64-apple-darwin
-            artifact_name: auth0_cli-mac
-            binary_path: target/x86_64-apple-darwin/release/auth0_cli
+            binary_name: your_binary_name
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -34,10 +34,24 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --target ${{ matrix.target }}
+          args: --verbose --release --target ${{ matrix.target }}
+
+      - name: Prepare Artifact
+        shell: bash
+        run: |
+          binary_name="${{ matrix.binary_name }}"
+          version="latest"
+          dirname="$binary_name-$version-${{ matrix.target }}"
+          mkdir "$dirname"
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            mv "target/${{ matrix.target }}/release/$binary_name.exe" "$dirname/"
+          else
+            mv "target/${{ matrix.target }}/release/$binary_name" "$dirname/"
+          fi
+          echo "ASSET_PATH=$dirname" >> $GITHUB_ENV
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.os }}-binary
-          path: target/${{ matrix.target }}/release/
+          name: ${{ matrix.build }}-artifact
+          path: ${{ env.ASSET_PATH }}
