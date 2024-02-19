@@ -2,10 +2,6 @@ name: Rust Build
 
 on: [push]
 
-env:
-  RUST_TOOLCHAIN: stable
-  PROJECT_NAME: my_project
-
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -16,12 +12,12 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: windows-executable-${{ env.PROJECT_NAME }}
-            binary_path: target\x86_64-pc-windows-msvc\release\${{ env.PROJECT_NAME }}.exe
+            artifact_name: windows-executable-my_project
+            binary_path: target\x86_64-pc-windows-msvc\release\auth0_cli.exe
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact_name: mac-executable-${{ env.PROJECT_NAME }}
-            binary_path: target/x86_64-apple-darwin/release/${{ env.PROJECT_NAME }}
+            artifact_name: mac-executable-my_project
+            binary_path: target/x86_64-apple-darwin/release/auth0_cli
 
     steps:
       - uses: actions/checkout@v2
@@ -29,7 +25,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          toolchain: stable
           override: true
           target: ${{ matrix.target }}
       - name: Build
