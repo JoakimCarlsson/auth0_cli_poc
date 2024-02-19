@@ -37,7 +37,7 @@ jobs:
       - name: Prepare Artifact
         shell: bash
         run: |
-          binary_name="${{ matrix.binary_name }}"
+          binary_name="${{ matrix.target }}"
           version="latest"
           dirname="$binary_name-$version-${{ matrix.target }}"
           mkdir "$dirname"
