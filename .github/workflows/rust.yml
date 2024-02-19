@@ -33,14 +33,17 @@ jobs:
       - name: Create Release Directory
         run: mkdir -p release
 
+      - name: Create Release Directory
+        run: mkdir -p release
+
       - name: Compress for Windows
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path target/x86_64-pc-windows-msvc/release/* -DestinationPath release/JoakimCarlsson/auth0_cli_poc-699a445bb46e033784ff8c7da2cb06e327194bab-x86_64-pc-windows-msvc.zip
+        run: Compress-Archive -Path target/${{ matrix.target }}/release/* -DestinationPath release/${{ github.repository }}-${{ github.sha }}-${{ matrix.target }}.zip
         shell: pwsh
 
       - name: Compress for macOS and Linux
         if: runner.os != 'Windows'
-        run: tar czvf release/JoakimCarlsson/auth0_cli_poc-699a445bb46e033784ff8c7da2cb06e327194bab-x86_64-apple-darwin.tar.gz -C target/x86_64-apple-darwin/release .
+        run: tar czvf release/${{ github.repository }}-${{ github.sha }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release .
         shell: bash
 
       - name: Upload artifacts
