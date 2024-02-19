@@ -12,11 +12,11 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: windows-executable-my_project
+            artifact_name: auth0_cli-windows
             binary_path: target\x86_64-pc-windows-msvc\release\auth0_cli.exe
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact_name: mac-executable-my_project
+            artifact_name: auth0_cli-mac
             binary_path: target/x86_64-apple-darwin/release/auth0_cli
 
     steps:
