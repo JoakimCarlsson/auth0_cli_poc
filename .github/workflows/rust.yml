@@ -2,6 +2,10 @@ name: Rust Build
 
 on: [push]
 
+env:
+  RUST_TOOLCHAIN: stable
+  PROJECT_NAME: my_project
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
