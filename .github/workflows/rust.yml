@@ -31,6 +31,11 @@ jobs:
           command: build
           args: --release --target ${{ matrix.target }}
 
+      - name: Strip binary (macOS and Linux)
+        if: runner.os != 'Windows'
+        run: |
+          strip target/${{ matrix.target }}/release/auth0_cli_poc
+
       - name: Create release directory
         run: mkdir -p release/${{ github.repository }}
 
@@ -42,7 +47,6 @@ jobs:
       - name: Compress for macOS and Linux
         if: runner.os != 'Windows'
         run: |
-          mkdir -p release/${{ github.repository }}
           tar czvf release/${{ github.repository }}/${{ github.sha }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release .
         shell: bash
 
