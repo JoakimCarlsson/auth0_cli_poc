@@ -5,7 +5,11 @@ mod auth;
 use cli::Cli;
 use std::sync::{Arc, Mutex};
 use clap::Parser;
-use std::io::{self, Write};
+
+extern crate clipboard;
+use clipboard::ClipboardProvider;
+use clipboard::ClipboardContext;
+
 use tokio;
 use webbrowser;
 
@@ -41,16 +45,18 @@ async fn main() {
         Ok((status, auth_response)) => {
             println!("HTTP Status: {}", status);
             println!("Access Token: {}", auth_response.access_token);
+
+            let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+            if ctx.set_contents(auth_response.access_token.clone()).is_ok() {
+                println!("Access token copied to clipboard.");
+            } else {
+                println!("Failed to copy access token to clipboard.");
+            }
         },
         Err(e) => {
             println!("Failed to exchange code for token: {}", e);
         }
     }
-
-    // Cleanup and exit
-    println!("Press Enter to exit...");
-    io::stdout().flush().unwrap();
-    let _ = io::stdin().read_line(&mut String::new());
 }
 
 async fn wait_for_auth_code(code_received: Arc<Mutex<Option<String>>>) -> String {
